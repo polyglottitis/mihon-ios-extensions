@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": "org.polyglottitis.tcbscans",
   "name": "TCB Scans",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "language": "en",
   "entry": "source.js",
   "description": "Native Mihon iOS extension for the TCB Scans website.",
