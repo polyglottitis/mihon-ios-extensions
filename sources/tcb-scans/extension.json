@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "id": "org.polyglottitis.tcbscans",
+  "name": "TCB Scans",
+  "version": "0.1.0",
+  "language": "en",
+  "entry": "source.js",
+  "description": "Native Mihon iOS extension for the TCB Scans website.",
+  "website": "https://tcbonepiecechapters.com/",
+  "capabilities": {
+    "search": true,
+    "popular": false,
+    "latest": false
+  },
+  "permissions": {
+    "hosts": [
+      "tcbonepiecechapters.com",
+      "cdn.onepiecechapters.com"
+    ]
+  }
+}
