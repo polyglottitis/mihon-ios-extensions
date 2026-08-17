@@ -1,37 +1,52 @@
-# Mihon iOS Extensions
+# Mihon iOS Native Extensions
 
-Companion repository for developing and testing native extensions for `polyglottitis/mihon-ios`.
+This repository contains development and test extensions for the native extension ABI implemented by `polyglottitis/mihon-ios`.
 
-This repository is intentionally separate from the app. The app ships without a source catalogue; extensions are user-installed packages that implement the Mihon iOS native extension ABI.
+The app itself remains source-neutral. Extensions live here as separate packages and are installed by the user.
 
 ## Layout
 
 ```text
-sources/                 Extension source projects
-builds/                  Built `.mihonext` packages for testing
-templates/basic/         Minimal v1 extension template
-docs/extension-format-v1.md
+docs/
+  extension-format-v1.md
+
+templates/
+  basic/
+    extension.json
+    source.js
+
+sources/
+  <extension>/
+    extension.json
+    source.js
+
+builds/
+  <extension>-<version>.mihonext
 ```
 
-## Native extension package
+## Current test extensions
 
-A v1 package is a ZIP archive, conventionally named `.mihonext`, containing at minimum:
+### TCB Scans
+
+Source: `sources/tcb-scans/`
+
+Build: `builds/tcb-scans-0.1.0.mihonext`
+
+The first version is intentionally search-only at the catalogue level. It indexes the site's `/projects` page, then resolves manga details, chapters, and reader pages from the corresponding HTML pages.
+
+## Building an extension
+
+A `.mihonext` package is a ZIP archive whose root contains at least:
 
 ```text
 extension.json
 source.js
 ```
 
-The manifest declares the source identity, version, capabilities, entry file and the network hosts the extension is allowed to access. The JavaScript entry exposes one `globalThis.source` object implementing the source operations.
+The manifest declares the extension id, version, capabilities, and explicit network host permissions. The JavaScript entry file assigns an implementation to `globalThis.source`.
 
-See `docs/extension-format-v1.md` for the current contract.
+See `docs/extension-format-v1.md` for the full v1 contract.
 
-## Development workflow
+## Scope
 
-1. Copy `templates/basic` into `sources/<source-id>`.
-2. Implement the source against the v1 ABI.
-3. Zip the contents of that source directory so `extension.json` is at the archive root.
-4. Rename the archive to `<source-id>.mihonext` if desired.
-5. Install it from Browse → Install native extension in Mihon iOS.
-
-`builds/` is for disposable test packages while the ABI is being validated. A repository/catalogue format can be added later once multiple independent sources work reliably.
+This repository is for extension development and testing. It is not a bundled/default source catalogue for the iOS app.
