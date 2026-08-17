@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "id": "org.example.source",
+  "name": "Example Source",
+  "version": "1.0.0",
+  "language": "en",
+  "entry": "source.js",
+  "description": "Template native source for Mihon iOS",
+  "website": "https://example.org",
+  "capabilities": {
+    "search": true,
+    "popular": false,
+    "latest": false
+  },
+  "permissions": {
+    "hosts": [
+      "example.org"
+    ]
+  }
+}
