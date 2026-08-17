@@ -1,4 +1,5 @@
 const BASE = "https://tcbonepiecechapters.com";
+const CDN_HOST = "cdn.onepiecechapters.com";
 
 function decodeEntities(value) {
   return String(value || "")
@@ -22,12 +23,24 @@ function stripTags(value) {
 }
 
 function absoluteURL(raw) {
-  if (!raw) return null;
-  try {
-    return new URL(decodeEntities(raw), BASE).href;
-  } catch (_) {
-    return null;
-  }
+  const value = decodeEntities(raw).trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("//")) return "https:" + value;
+  if (value.startsWith("/")) return BASE + value;
+  return BASE + "/" + value.replace(/^\.\//, "");
+}
+
+function pathOf(url) {
+  return String(url || "")
+    .replace(/^https?:\/\/[^/]+/i, "")
+    .split("?")[0]
+    .split("#")[0];
+}
+
+function hostOf(url) {
+  const match = String(url || "").match(/^https?:\/\/([^/:?#]+)/i);
+  return match ? match[1].toLowerCase() : "";
 }
 
 async function getHTML(url) {
@@ -46,22 +59,17 @@ async function getHTML(url) {
 }
 
 function slugTitle(url) {
-  try {
-    const slug = new URL(url).pathname.split("/").filter(Boolean).pop() || "Untitled";
-    return slug.split("-").map(part => part ? part[0].toUpperCase() + part.slice(1) : part).join(" ");
-  } catch (_) {
-    return "Untitled";
-  }
+  const parts = pathOf(url).split("/").filter(Boolean);
+  const slug = parts.length ? parts[parts.length - 1] : "Untitled";
+  return slug
+    .split("-")
+    .map(part => part ? part[0].toUpperCase() + part.slice(1) : part)
+    .join(" ");
 }
 
 function idFromURL(url) {
-  try {
-    const parts = new URL(url).pathname.split("/").filter(Boolean);
-    const index = parts.indexOf("mangas");
-    return index >= 0 && parts[index + 1] ? parts[index + 1] : url;
-  } catch (_) {
-    return url;
-  }
+  const match = pathOf(url).match(/\/mangas\/(\d+)(?:\/|$)/i);
+  return match ? match[1] : String(url || "");
 }
 
 function extractMeta(html, name) {
@@ -87,23 +95,24 @@ function projectManga(html) {
   const seen = new Set();
   const anchor = /<a\b[^>]*href=["']([^"']*\/mangas\/\d+\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let match;
+
   while ((match = anchor.exec(html)) !== null) {
     const url = absoluteURL(match[1]);
     if (!url || seen.has(url)) continue;
 
     let title = stripTags(match[2]);
-    if (!title) {
-      const alt = match[2].match(/<img\b[^>]*alt=["']([^"']+)["']/i);
-      if (alt) title = decodeEntities(alt[1]).trim();
-    }
+    const alt = match[2].match(/<img\b[^>]*alt=["']([^"']+)["']/i);
+    if ((!title || title.length > 180) && alt) title = decodeEntities(alt[1]).trim();
     if (!title) title = slugTitle(url);
+
+    const image = match[2].match(/<img\b[^>]*(?:src|data-src)=["']([^"']+)["']/i);
 
     seen.add(url);
     items.push({
       id: idFromURL(url),
       title,
       url,
-      thumbnailURL: null,
+      thumbnailURL: image ? absoluteURL(image[1]) : null,
       author: null,
       artist: null,
       summary: null,
@@ -111,6 +120,7 @@ function projectManga(html) {
       status: null
     });
   }
+
   return items;
 }
 
@@ -119,13 +129,15 @@ function chapterRows(html, mangaTitle) {
   const seen = new Set();
   const anchor = /<a\b[^>]*href=["']([^"']*\/chapters\/\d+\/[^"'?#]+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let match;
+
   while ((match = anchor.exec(html)) !== null) {
     const url = absoluteURL(match[1]);
     if (!url || seen.has(url)) continue;
+
     const title = stripTags(match[2]) || slugTitle(url);
     const numberMatch = title.match(/chapter\s+([0-9]+(?:\.[0-9]+)?)/i);
     const number = numberMatch ? Number(numberMatch[1]) : null;
-    const idMatch = new URL(url).pathname.match(/\/chapters\/(\d+)\//);
+    const idMatch = pathOf(url).match(/\/chapters\/(\d+)(?:\/|$)/i);
 
     seen.add(url);
     chapters.push({
@@ -137,6 +149,7 @@ function chapterRows(html, mangaTitle) {
       uploadedAt: null
     });
   }
+
   return chapters;
 }
 
@@ -146,13 +159,7 @@ function chapterPages(html) {
 
   const add = raw => {
     const url = absoluteURL(raw);
-    if (!url || seen.has(url)) return;
-    try {
-      const host = new URL(url).hostname.toLowerCase();
-      if (host !== "cdn.onepiecechapters.com") return;
-    } catch (_) {
-      return;
-    }
+    if (!url || seen.has(url) || hostOf(url) !== CDN_HOST) return;
     seen.add(url);
     pages.push({ url, referer: BASE + "/" });
   };
@@ -175,6 +182,7 @@ globalThis.source = {
     const pageSize = 24;
     const safePage = Math.max(1, Number(page) || 1);
     const start = (safePage - 1) * pageSize;
+
     return {
       manga: all.slice(start, start + pageSize),
       hasNextPage: start + pageSize < all.length
@@ -191,7 +199,7 @@ globalThis.source = {
       id: manga.id,
       title,
       url: manga.url,
-      thumbnailURL: image || manga.thumbnailURL || null,
+      thumbnailURL: image ? absoluteURL(image) : (manga.thumbnailURL || null),
       author: manga.author || null,
       artist: manga.artist || null,
       summary: description || manga.summary || null,
